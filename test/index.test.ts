@@ -72,4 +72,56 @@ Content here`
     const result = preprocessMarkdown(input)
     expect(result).toContain('| Header 1 | Header 2 |')
   })
+
+  it('should handle CRLF line endings (pasted content from Windows)', () => {
+    // Simulate pasted content with \r\n line endings
+    const input = "Line 1\r\nLine 2\r\nLine 3"
+    const result = preprocessMarkdown(input)
+    // Each line should end with two spaces (hard break), no \r before the spaces
+    expect(result).toBe("Line 1  \nLine 2  \nLine 3  ")
+  })
+
+  it('should preserve 2+ empty lines before markdown syntax lines (headings)', () => {
+    const input = `　　她真的好想哭。
+
+
+### ⛤⛤⛤`
+    const result = preprocessMarkdown(input)
+    expect(result).toContain('<br><br>')
+    expect(result).toContain('### ⛤⛤⛤')
+  })
+
+  it('should NOT add <br> for single empty line between content and syntax', () => {
+    const input = `Some content
+
+## Heading`
+    const result = preprocessMarkdown(input)
+    // Single empty line between content and syntax should not produce <br>
+    const parts = result.split('\n')
+    expect(parts.some(p => p.includes('<br>'))).toBe(false)
+  })
+
+  it('should add <br> for single empty line between two content lines', () => {
+    const input = `Line 1
+
+Line 2`
+    const result = preprocessMarkdown(input)
+    expect(result).toContain('<br>')
+  })
+
+  it('should preserve leading empty lines before first content', () => {
+    const input = `
+
+
+第一個內容`
+    const result = preprocessMarkdown(input)
+    expect(result).toContain('<br>')
+    expect(result).toContain('第一個內容')
+  })
+
+  it('should handle mixed CR/CRLF line endings', () => {
+    const input = "Line 1\r\nLine 2\rLine 3"
+    const result = preprocessMarkdown(input)
+    expect(result).toBe("Line 1  \nLine 2  \nLine 3  ")
+  })
 })

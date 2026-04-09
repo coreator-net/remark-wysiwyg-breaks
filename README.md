@@ -81,8 +81,21 @@ The following are recognized as Markdown syntax and left untouched:
 Non-syntax lines receive two trailing spaces to create hard breaks.
 
 ### Empty Lines
-- Single empty line between content: converted to `<br>` + paragraph break
-- Multiple consecutive empty lines: each becomes a `<br>` tag
+
+The plugin applies context-aware rules:
+
+| Previous line | Next line | Empty line count | Result |
+|---------------|-----------|------------------|--------|
+| content | content | 1+ | `<br>` per empty line |
+| content | syntax | 1 | paragraph separator only |
+| content | syntax | 2+ | `<br>` per empty line |
+| syntax | content | 1 | paragraph separator only |
+| syntax | content | 2+ | `<br>` per empty line |
+| (start of file) | content | 1+ | `<br>` per empty line |
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md).
 
 ## License
 

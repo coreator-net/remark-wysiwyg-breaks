@@ -62,6 +62,9 @@ export function preprocessMarkdown(
     }
   }
 
+  // Normalize line endings to \n (handles \r\n and \r from pasted content)
+  body = body.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
   // Protect code blocks
   const codeBlocks: string[] = []
   body = body.replace(/```[\s\S]*?```/g, (match: string) => {
@@ -73,6 +76,9 @@ export function preprocessMarkdown(
   const lines = body.split('\n')
   const result: string[] = []
   let emptyLineCount = 0
+  // false = content, true = syntax; starts false so leading empty lines before
+  // content are treated as content→content and preserved with <br>
+  let prevWasSyntax = false
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -83,33 +89,35 @@ export function preprocessMarkdown(
       continue
     }
 
+    const isCurrentSyntax = isMdSyntaxLine(line) || line.includes('<<<CODEBLOCK_')
+
     // Non-empty line: process accumulated empty lines first
     if (emptyLineCount > 0) {
-      const isCurrentContentLine =
-        !isMdSyntaxLine(line) && !line.includes('<<<CODEBLOCK_')
-
-      if (isCurrentContentLine) {
-        // Empty lines followed by content line: use <br> to preserve all empty lines
+      const bothContent = !prevWasSyntax && !isCurrentSyntax
+      // content↔content: 1+ empty lines → <br>
+      // anything involving syntax: 2+ empty lines → <br>
+      if (emptyLineCount >= 2 || bothContent) {
         const brs = Array(emptyLineCount).fill('<br>').join('')
         result.push(brs)
       }
-      // Empty lines followed by Markdown syntax line: just need paragraph separation
       result.push('')
       emptyLineCount = 0
     }
 
     // Process current line
-    if (isMdSyntaxLine(line) || line.includes('<<<CODEBLOCK_')) {
+    if (isCurrentSyntax) {
       // Markdown syntax line: keep as is
       result.push(line)
     } else {
       // Content line: add two trailing spaces (hard break)
       result.push(line + '  ')
     }
+
+    prevWasSyntax = isCurrentSyntax
   }
 
   // Handle trailing empty lines
-  if (emptyLineCount > 1) {
+  if (emptyLineCount > 0) {
     const brs = Array(emptyLineCount).fill('<br>').join('')
     result.push(brs)
   }
