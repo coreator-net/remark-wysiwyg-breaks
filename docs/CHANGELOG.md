@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.4] - 2026-04-17
+
+### Bug Fixes
+
+#### Multi-paragraph `<i>` blocks rendered with inconsistent HTML structure
+
+**Problem:** When an HTML inline tag (e.g. `<i>`) appears on its own line and spans multiple paragraphs (blank lines between opening and closing tag), only the first paragraph was wrapped correctly as `<p><i>…</i></p>`. Subsequent paragraphs were rendered as `<i><p>…</p></i>` — an invalid HTML5 structure (inline wrapping block).
+
+**Root cause:** The 1.0.3 fix merged the standalone opening tag with the first content line only, which solved the Type 7 HTML block problem for the first paragraph but left later paragraphs untagged, causing renderers to wrap them inconsistently.
+
+**Fix:** Extend the pre-processing step to detect multi-paragraph blocks (blank lines between `<i>` and `</i>`). For these blocks, instead of merging the opening tag with only the first line, the tag is distributed: `<tag>` is prepended to the first line of each paragraph and `</tag>` is appended to the last line of each paragraph. This produces `<p><tag>…</tag></p>` consistently for all paragraphs, while preserving Markdown syntax processing inside each paragraph (bold, inline code, etc.).
+
+Single-paragraph blocks (no blank lines) continue to use the existing merge approach.
+
+---
+
 ## [1.0.3] - 2026-04-17
 
 ### Bug Fixes

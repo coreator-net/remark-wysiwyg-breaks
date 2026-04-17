@@ -130,17 +130,25 @@ Line 2`
     expect(result).not.toContain('\u200B  ')
   })
 
-  it('should merge standalone HTML inline tag line with next line to prevent Type 7 HTML block', () => {
-    // <i> on its own line triggers CommonMark Type 7 HTML block where newlines collapse
+  it('should merge standalone HTML inline tag line with next line for single-paragraph blocks', () => {
+    // <i> on its own line, single paragraph (no blank lines before </i>) → merge
+    const input = '<i>\n　　第一行\n　　第二行</i>'
+    const result = preprocessMarkdown(input)
+    expect(result).toContain('<i>　　第一行  ')
+    expect(result).toContain('　　第二行</i>  ')
+  })
+
+  it('should distribute <i> tags to each paragraph for multi-paragraph blocks', () => {
+    // <i> on its own line with blank lines inside → distribute to each paragraph
     const input = '<i>\n　　會被黏1\n　　會被黏2\n　　會被黏3\n\n　　不會被黏1\n　　不會被黏2</i>'
     const result = preprocessMarkdown(input)
-    // <i> should be merged with first content line, preventing HTML block
+    // First paragraph: <i> prepended to first line, </i> appended to last line
     expect(result).toContain('<i>　　會被黏1  ')
-    // Subsequent lines should have trailing spaces (hard breaks)
     expect(result).toContain('　　會被黏2  ')
-    expect(result).toContain('　　會被黏3  ')
-    // The paragraph after blank line should also work
-    expect(result).toContain('　　不會被黏1  ')
+    expect(result).toContain('　　會被黏3</i>  ')
+    // Second paragraph: <i> prepended, original </i> preserved
+    expect(result).toContain('<i>　　不會被黏1  ')
+    expect(result).toContain('　　不會被黏2</i>  ')
   })
 
   it('should not merge standalone HTML tag with next line if followed by blank line', () => {

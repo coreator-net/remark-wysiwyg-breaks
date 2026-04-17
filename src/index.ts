@@ -42,6 +42,120 @@ function isMdSyntaxLine(line: string): boolean {
 }
 
 /**
+ * Pre-process lines to handle standalone HTML inline opening tags.
+ *
+ * Single-paragraph (no blank lines between opening and closing tag):
+ *   merge opening tag with next line to prevent CommonMark Type 7 HTML block.
+ *
+ * Multi-paragraph (blank lines exist between opening and closing tag):
+ *   remove the standalone opening tag line and distribute <tag>…</tag> to
+ *   the first/last line of every paragraph — producing valid
+ *   <p><tag>…</tag></p> for each paragraph.
+ */
+function distributeInlineHtmlTags(lines: string[]): string[] {
+  const isBlank = (line: string) =>
+    line.replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, '').trim() === ''
+
+  const result: string[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const trimmed = lines[i].trim()
+    const openTagMatch = trimmed.match(/^<([a-zA-Z][a-zA-Z0-9-]*)(\s[^>]*)?>$/)
+
+    if (!openTagMatch) {
+      result.push(lines[i])
+      i++
+      continue
+    }
+
+    const tagName = openTagMatch[1]
+    const fullOpenTag = trimmed
+    const closeTagRe = new RegExp(`</${tagName}>`, 'i')
+
+    // Scan ahead to find the line containing the closing tag
+    let closeIdx = -1
+    let hasBlankBetween = false
+    for (let j = i + 1; j < lines.length; j++) {
+      if (closeTagRe.test(lines[j])) {
+        closeIdx = j
+        break
+      }
+      if (isBlank(lines[j])) hasBlankBetween = true
+    }
+
+    if (closeIdx === -1) {
+      // No closing tag found — leave as-is
+      result.push(lines[i])
+      i++
+      continue
+    }
+
+    if (!hasBlankBetween) {
+      // Single paragraph: merge opening tag with the immediately following
+      // non-empty line so it doesn't trigger a Type 7 HTML block.
+      if (i + 1 < lines.length && !isBlank(lines[i + 1])) {
+        result.push(fullOpenTag + lines[i + 1])
+        i += 2
+      } else {
+        result.push(lines[i])
+        i++
+      }
+      continue
+    }
+
+    // Multi-paragraph: distribute tags to each paragraph boundary
+    const blockLines = lines.slice(i + 1, closeIdx + 1)
+
+    // If closing tag is on its own line, merge it into the preceding content line
+    if (blockLines[blockLines.length - 1].trim() === `</${tagName}>`) {
+      let prevIdx = blockLines.length - 2
+      while (prevIdx >= 0 && isBlank(blockLines[prevIdx])) prevIdx--
+      if (prevIdx >= 0) {
+        blockLines[prevIdx] += blockLines[blockLines.length - 1]
+        blockLines.pop()
+      }
+    }
+
+    // Find index of last non-empty line in block
+    let lastNonEmptyIdx = -1
+    for (let j = blockLines.length - 1; j >= 0; j--) {
+      if (!isBlank(blockLines[j])) { lastNonEmptyIdx = j; break }
+    }
+
+    let firstInParagraph = true
+    for (let j = 0; j < blockLines.length; j++) {
+      const line = blockLines[j]
+      if (isBlank(line)) {
+        firstInParagraph = true
+        result.push(line)
+        continue
+      }
+
+      let processed = line
+      if (firstInParagraph) {
+        processed = fullOpenTag + processed
+        firstInParagraph = false
+      }
+
+      // Append closing tag to last line of each paragraph (unless already present)
+      const isLastInPara =
+        j === lastNonEmptyIdx ||
+        (j < blockLines.length - 1 && isBlank(blockLines[j + 1]))
+      if (isLastInPara && !closeTagRe.test(processed)) {
+        processed += `</${tagName}>`
+      }
+
+      result.push(processed)
+    }
+
+    i = closeIdx + 1
+  }
+
+  return result
+}
+
+/**
  * Preprocess Markdown content to preserve WYSIWYG line breaks
  */
 export function preprocessMarkdown(
@@ -73,22 +187,8 @@ export function preprocessMarkdown(
   })
 
   // Process each line
-  const lines = body.split('\n')
-
-  // Pre-process: merge standalone HTML inline opening tag lines with the immediately
-  // following non-empty line. A lone <i>, <em>, <b> etc. triggers a CommonMark Type 7
-  // HTML block, inside which newlines collapse to spaces — making trailing-space hard
-  // breaks useless. Merging prevents the HTML block from being triggered.
-  for (let i = lines.length - 2; i >= 0; i--) {
-    const trimmed = lines[i].trim()
-    if (
-      /^<[a-zA-Z][a-zA-Z0-9-]*(\s[^>]*)?>$/.test(trimmed) &&
-      lines[i + 1].trim() !== ''
-    ) {
-      lines[i + 1] = trimmed + lines[i + 1]
-      lines.splice(i, 1)
-    }
-  }
+  // Pre-process: handle standalone HTML inline tag lines before main loop
+  const lines = distributeInlineHtmlTags(body.split('\n'))
 
   const result: string[] = []
   let emptyLineCount = 0
