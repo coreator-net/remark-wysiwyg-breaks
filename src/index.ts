@@ -84,7 +84,10 @@ export function preprocessMarkdown(
     const line = lines[i]
 
     // Empty line: accumulate count
-    if (line.trim() === '') {
+    // Also treat lines containing only zero-width / invisible Unicode characters as empty
+    // (e.g. U+200B zero-width space, U+FEFF BOM, U+200C/200D/2060)
+    const stripped = line.replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, '')
+    if (stripped.trim() === '') {
       emptyLineCount++
       continue
     }

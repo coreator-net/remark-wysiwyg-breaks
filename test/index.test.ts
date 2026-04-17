@@ -119,6 +119,17 @@ Line 2`
     expect(result).toContain('第一個內容')
   })
 
+  it('should treat zero-width space only lines as empty lines', () => {
+    // U+200B line between content should be treated as empty (paragraph separator)
+    const input = '　　別害怕——</i>\n\n\u200B\n　　「別害怕...」'
+    const result = preprocessMarkdown(input)
+    // ZWS line counted as empty → emptyLineCount=2, bothContent → <br><br>
+    expect(result).toContain('<br><br>')
+    expect(result).toContain('　　「別害怕...」')
+    // ZWS line should NOT appear as content
+    expect(result).not.toContain('\u200B  ')
+  })
+
   it('should handle mixed CR/CRLF line endings', () => {
     const input = "Line 1\r\nLine 2\rLine 3"
     const result = preprocessMarkdown(input)

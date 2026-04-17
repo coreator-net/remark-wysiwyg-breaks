@@ -1,6 +1,6 @@
 {
   "name": "@coreator/remark-wysiwyg-breaks",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A remark plugin that preserves line breaks and empty lines as users intended (WYSIWYG)",
   "type": "module",
   "main": "./dist/index.cjs",

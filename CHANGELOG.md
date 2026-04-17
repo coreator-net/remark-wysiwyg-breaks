@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.2] - 2026-04-17
+
+### Bug Fixes
+
+#### Zero-width space lines not treated as empty lines
+
+**Problem:** Lines containing only zero-width Unicode characters (e.g. U+200B zero-width space, commonly inserted by rich-text editors or copy-paste from browsers) were not recognized as empty lines by `String.prototype.trim()`. This caused them to be treated as content lines, breaking expected paragraph separation — most visibly when such a line appeared between an `</i>` block and the next dialogue paragraph, making the spacing disappear.
+
+**Fix:** Strip zero-width and invisible Unicode characters (`\u200B`, `\u200C`, `\u200D`, `\u2060`, `\uFEFF`) before checking if a line is empty.
+
+---
+
 ## [1.0.1] - 2026-04-09
 
 ### Bug Fixes
