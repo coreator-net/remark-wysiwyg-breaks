@@ -93,6 +93,37 @@ The plugin applies context-aware rules:
 | syntax | content | 2+ | `<br>` per empty line |
 | (start of file) | content | 1+ | `<br>` per empty line |
 
+### Inline HTML Tags (`<i>`, `<em>`, `<b>`, etc.)
+
+A standalone HTML inline tag on its own line (e.g. `<i>` with nothing else on the line) would normally trigger a CommonMark Type 7 HTML block, causing all line breaks inside to collapse. This plugin handles it automatically:
+
+**Single-paragraph** — tag is merged onto the next line:
+
+```markdown
+<i>
+content line
+more content</i>
+```
+
+**Multi-paragraph** — tag is distributed to each paragraph's first and last line, producing valid `<p><i>…</i></p>` for every paragraph:
+
+```markdown
+<i>
+First paragraph line 1
+First paragraph line 2
+
+Second paragraph.</i>
+```
+
+Renders as:
+
+```html
+<p><i>First paragraph line 1<br>First paragraph line 2</i></p>
+<p><i>Second paragraph.</i></p>
+```
+
+Markdown syntax inside the block (bold, inline code, etc.) continues to work normally.
+
 ## Changelog
 
 See [CHANGELOG.md](./docs/CHANGELOG.md).

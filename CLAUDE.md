@@ -1,5 +1,9 @@
 # Claude Instructions
 
+## General Rules
+
+- Never `git push` unless explicitly asked. Commit locally and report — wait for the user to say push.
+
 ## Default Branch
 
 Always work on `develop`. Only switch to `main` to merge and push for release.
