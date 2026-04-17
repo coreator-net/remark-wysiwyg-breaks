@@ -74,6 +74,22 @@ export function preprocessMarkdown(
 
   // Process each line
   const lines = body.split('\n')
+
+  // Pre-process: merge standalone HTML inline opening tag lines with the immediately
+  // following non-empty line. A lone <i>, <em>, <b> etc. triggers a CommonMark Type 7
+  // HTML block, inside which newlines collapse to spaces — making trailing-space hard
+  // breaks useless. Merging prevents the HTML block from being triggered.
+  for (let i = lines.length - 2; i >= 0; i--) {
+    const trimmed = lines[i].trim()
+    if (
+      /^<[a-zA-Z][a-zA-Z0-9-]*(\s[^>]*)?>$/.test(trimmed) &&
+      lines[i + 1].trim() !== ''
+    ) {
+      lines[i + 1] = trimmed + lines[i + 1]
+      lines.splice(i, 1)
+    }
+  }
+
   const result: string[] = []
   let emptyLineCount = 0
   // false = content, true = syntax; starts false so leading empty lines before

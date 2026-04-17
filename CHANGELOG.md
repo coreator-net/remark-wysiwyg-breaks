@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.3] - 2026-04-17
+
+### Bug Fixes
+
+#### Standalone HTML inline tag lines causing content lines to merge (`<i>`, `<em>`, etc.)
+
+**Problem:** When an HTML inline opening tag (e.g. `<i>`, `<em>`, `<b>`) appears on its own line immediately followed by content, the content lines merge into a single line with spaces between them.
+
+**Root cause:** A lone `<tag>` on its own line satisfies CommonMark's Type 7 HTML block condition. Inside a Type 7 HTML block, content is treated as raw HTML — where line breaks are whitespace and collapse to spaces. The trailing-space hard break technique has no effect inside HTML blocks.
+
+**Fix:** Pre-process lines before the main loop. If a line consists only of an HTML opening tag and the immediately following line is non-empty, merge the tag onto the front of the next line. This prevents the Type 7 HTML block from triggering and keeps subsequent lines in a normal Markdown paragraph where trailing-space hard breaks work correctly.
+
+---
+
 ## [1.0.2] - 2026-04-17
 
 ### Bug Fixes

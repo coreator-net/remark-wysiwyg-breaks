@@ -130,6 +130,28 @@ Line 2`
     expect(result).not.toContain('\u200B  ')
   })
 
+  it('should merge standalone HTML inline tag line with next line to prevent Type 7 HTML block', () => {
+    // <i> on its own line triggers CommonMark Type 7 HTML block where newlines collapse
+    const input = '<i>\n　　會被黏1\n　　會被黏2\n　　會被黏3\n\n　　不會被黏1\n　　不會被黏2</i>'
+    const result = preprocessMarkdown(input)
+    // <i> should be merged with first content line, preventing HTML block
+    expect(result).toContain('<i>　　會被黏1  ')
+    // Subsequent lines should have trailing spaces (hard breaks)
+    expect(result).toContain('　　會被黏2  ')
+    expect(result).toContain('　　會被黏3  ')
+    // The paragraph after blank line should also work
+    expect(result).toContain('　　不會被黏1  ')
+  })
+
+  it('should not merge standalone HTML tag with next line if followed by blank line', () => {
+    // <i> followed by blank line: Type 7 block ends immediately, no content inside
+    const input = '<i>\n\n　　content'
+    const result = preprocessMarkdown(input)
+    // <i> stays on its own line (no merge needed)
+    expect(result).toContain('<i>')
+    expect(result).toContain('　　content')
+  })
+
   it('should handle mixed CR/CRLF line endings', () => {
     const input = "Line 1\r\nLine 2\rLine 3"
     const result = preprocessMarkdown(input)

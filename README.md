@@ -97,48 +97,6 @@ The plugin applies context-aware rules:
 
 See [CHANGELOG.md](./CHANGELOG.md).
 
-## Release Flow
-
-### Prerequisites
-
-- npm account with access to `@coreator` scope
-- A **Granular Access Token** (Packages and scopes, Read and write) stored in `~/.npmrc`:
-  ```
-  //registry.npmjs.org/:_authToken=<token>
-  ```
-- npm 2FA set to **not** require OTP for write actions, OR use a recovery code with `--otp`
-
-### Steps
-
-```bash
-# 1. Make changes on develop
-git checkout develop
-git merge main
-
-# ... make changes, run tests ...
-npm test
-
-# 2. Bump version in package.json, update CHANGELOG.md
-
-# 3. Commit on develop
-git add <files>
-git commit -m "chore: release vX.Y.Z"
-
-# 4. Merge to main
-git checkout main
-git merge develop
-
-# 5. Push both branches
-git push origin develop
-git push origin main
-
-# 6. Publish (build runs automatically via prepublishOnly)
-npm publish
-
-# If OTP is required (2FA recovery code):
-npm publish --otp=<recovery-code>
-```
-
 ## License
 
 MIT
