@@ -95,7 +95,7 @@ The plugin applies context-aware rules:
 
 ## Changelog
 
-See [CHANGELOG.md](./CHANGELOG.md).
+See [CHANGELOG.md](./docs/CHANGELOG.md).
 
 ## License
 
