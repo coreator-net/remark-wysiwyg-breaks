@@ -1,5 +1,9 @@
 # Claude Instructions
 
+## Default Branch
+
+Always work on `develop`. Only switch to `main` to merge and push for release.
+
 ## Release Flow
 
 When publishing a new version:
