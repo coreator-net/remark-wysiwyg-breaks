@@ -42,6 +42,46 @@ function isMdSyntaxLine(line: string): boolean {
 }
 
 /**
+ * Check if a line opens a container block that swallows the following line.
+ *
+ * Lists, blockquotes and GFM tables all continue into the next non-blank line
+ * (lazy continuation / extra table row). A <br> line emitted directly after
+ * one of them is absorbed into the container instead of standing on its own —
+ * for tables it even becomes a row of empty cells. Such containers must be
+ * closed with a blank line before the <br> run is emitted.
+ *
+ * Paragraphs are deliberately excluded: letting the <br> run join the
+ * preceding paragraph is this package's intended behaviour.
+ */
+function isContainerLine(line: string): boolean {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+
+  // Unordered list
+  if (/^[*\-+]\s/.test(trimmed)) return true
+  // Ordered list — CommonMark allows both `1.` and `1)`
+  if (/^\d+[.)]\s/.test(trimmed)) return true
+  // Blockquote
+  if (/^>\s?/.test(trimmed)) return true
+  // Table row with a leading pipe
+  if (/^\|/.test(trimmed)) return true
+
+  return false
+}
+
+/**
+ * Check if a line is a GFM table delimiter row, e.g. `|---|---|` or `--|--`.
+ *
+ * GFM allows tables without leading or trailing pipes, so the delimiter row is
+ * the only reliable marker that a table has started. It must consist solely of
+ * dashes, colons, pipes and whitespace, and carry at least one pipe and dash.
+ */
+function isTableDelimiterRow(line: string): boolean {
+  const trimmed = line.trim()
+  return /^[\s|:-]+$/.test(trimmed) && trimmed.includes('|') && trimmed.includes('-')
+}
+
+/**
  * Pre-process lines to handle standalone HTML inline opening tags.
  *
  * Single-paragraph (no blank lines between opening and closing tag):
@@ -195,6 +235,12 @@ export function preprocessMarkdown(
   // false = content, true = syntax; starts false so leading empty lines before
   // content are treated as content→content and preserved with <br>
   let prevWasSyntax = false
+  // Whether we are inside a container block (list / blockquote / table) that
+  // would otherwise swallow the <br> run emitted for the empty lines.
+  let inContainer = false
+  // Tracks a GFM table that was opened by a delimiter row; such a table has no
+  // leading pipe requirement, so membership is decided by the pipe character.
+  let inTable = false
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -217,10 +263,13 @@ export function preprocessMarkdown(
       // anything involving syntax: 2+ empty lines → <br>
       if (emptyLineCount >= 2 || bothContent) {
         const brs = Array(emptyLineCount).fill('<br>').join('')
+        if (inContainer) result.push('')
         result.push(brs)
       }
       result.push('')
       emptyLineCount = 0
+      inContainer = false
+      inTable = false
     }
 
     // Process current line
@@ -233,11 +282,27 @@ export function preprocessMarkdown(
     }
 
     prevWasSyntax = isCurrentSyntax
+    // Content lines keep an open container open (lazy continuation); a
+    // non-container syntax line (heading, rule, code fence) closes it.
+    const trimmedLine = line.trim()
+    if (isTableDelimiterRow(trimmedLine)) {
+      inTable = true
+      inContainer = true
+    } else if (inTable) {
+      // Still inside the table for as long as rows keep carrying pipes.
+      inTable = trimmedLine.includes('|')
+      inContainer = inTable
+    } else if (isContainerLine(line)) {
+      inContainer = true
+    } else if (isCurrentSyntax) {
+      inContainer = false
+    }
   }
 
   // Handle trailing empty lines
   if (emptyLineCount > 0) {
     const brs = Array(emptyLineCount).fill('<br>').join('')
+    if (inContainer) result.push('')
     result.push(brs)
   }
 

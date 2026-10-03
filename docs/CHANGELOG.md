@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.0.5] - 2026-10-03
+
+### Bug Fixes
+
+#### Injected `<br>` absorbed by tables, lists and blockquotes
+
+**Problem:** When two or more empty lines followed a table, list or blockquote, the injected `<br>` run was swallowed by that block instead of standing on its own. Tables were the most visible: the `<br>` line became an extra row of empty cells.
+
+```
+| a | b |        <table>…<tbody>
+|---|---|          <tr><td>1</td><td>2</td></tr>
+| 1 | 2 |   →      <tr><td><br><br></td><td></td></tr>   ← phantom row
+                 </tbody></table>
+
++ A         →    <ul><li>A<br><br></li></ul>            ← breaks inside <li>
+> q         →    <blockquote><p>q<br><br></p></blockquote>
+```
+
+**Root cause:** The empty lines are replaced by a `<br>` line emitted directly after the preceding line, with no blank line in between. Tables, lists and blockquotes all continue into the following non-blank line (extra table row / lazy continuation), so the `<br>` line was parsed as part of that block rather than as its own.
+
+**Fix:** Track whether the preceding line belongs to a container block (list, blockquote, or a GFM table opened by a delimiter row) and emit a blank line before the `<br>` run to close it. Paragraphs are deliberately excluded — letting the `<br>` run join the preceding paragraph is the intended behaviour and is unchanged.
+
+Container detection covers both ordered list delimiters (`1.` and `1)`) and GFM tables written without leading pipes.
+
+**Note:** A list split by two or more empty lines now renders as separate `<ul>`/`<ol>` elements. Explicit numbering is preserved via `start` (`1.` … `2.` → `<ol>` + `<ol start="2">`), but a source that writes `1.` for every item will no longer be renumbered automatically.
+
+### Tests
+
+Added render-level test suites (`test/render.test.ts`, `test/invariants.test.ts`). The existing tests only asserted the string returned by `preprocessMarkdown`, which cannot reveal how a downstream parser re-attributes the injected `<br>` — the class of bug above was invisible to them. The new suites run a corpus of Markdown structures through the same unified pipeline as `islas-shared/markdown/Viewer.vue` and assert structural invariants on the rendered HTML.
+
+---
+
 ## [1.0.4] - 2026-04-17
 
 ### Bug Fixes
